@@ -132,7 +132,7 @@ class BookingsRepository {
     }
   }
 
-  Future<Booking> payBooking(String id, String paymentId) async {
+  Future<Booking> payBooking(String id, String paymentId, String orderId, String signature) async {
     try {
       final supabase = _ref.read(supabaseClientProvider);
       final token = supabase.auth.currentSession?.accessToken;
@@ -143,6 +143,8 @@ class BookingsRepository {
         '/bookings/$id/pay',
         data: {
           'paymentId': paymentId,
+          'orderId': orderId,
+          'signature': signature,
         },
         options: Options(headers: {
           'Authorization': 'Bearer $token',

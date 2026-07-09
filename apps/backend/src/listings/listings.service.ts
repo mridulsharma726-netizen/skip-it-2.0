@@ -56,12 +56,19 @@ export class ListingsService {
 
     // Increment owner's listing count (non-critical)
     try {
+      const { data: profile } = await this.supabaseService.client
+        .from('profiles')
+        .select('total_listings')
+        .eq('id', userId)
+        .single();
+      const currentListings = profile?.total_listings || 0;
+
       await this.supabaseService.client
         .from('profiles')
-        .update({ total_listings: 1 }) // Will be replaced with proper increment
+        .update({ total_listings: currentListings + 1 })
         .eq('id', userId);
-    } catch {
-      this.logger.warn(`Failed to increment listing count for ${userId}`);
+    } catch (err) {
+      this.logger.warn(`Failed to increment listing count for ${userId}: ${err.message}`);
     }
 
     return data;

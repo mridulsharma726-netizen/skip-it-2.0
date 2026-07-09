@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingsService } from './bookings.service';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('BookingsService', () => {
   let service: BookingsService;
@@ -11,6 +12,10 @@ describe('BookingsService', () => {
     },
   };
 
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -18,6 +23,10 @@ describe('BookingsService', () => {
         {
           provide: SupabaseService,
           useValue: mockSupabaseService,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
         },
       ],
     }).compile();

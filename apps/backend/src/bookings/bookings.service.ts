@@ -273,22 +273,30 @@ export class BookingsService {
 
   // ─── SYSTEM: MARK PAID (after Razorpay verification) ───────
 
-  async markPaid(bookingId: string, paymentOrderId: string, paymentId: string, paymentSignature: string) {
+  async markPaid(bookingId: string, paymentOrderId: string, paymentId: string, paymentSignature: string, userId: string) {
     const booking = await this.getBookingOrFail(bookingId);
+
+    if (booking.renter_id !== userId) {
+      throw new ForbiddenException('You are not authorized to pay for this booking');
+    }
 
     if (booking.status !== 'approved') {
       throw new BadRequestException(`Cannot mark as paid — booking status is "${booking.status}"`);
     }
 
-    const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
-    const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
+    const allowMock = this.configService.get<string>('ALLOW_MOCK_PAYMENTS') === 'true';
 
-    // Verify signature cryptographically if keys are set and signature is not mock
-    if (
-      keyId && keyId !== 'your_razorpay_key_id' && 
-      keySecret && keySecret !== 'your_razorpay_key_secret' && 
-      !paymentSignature.startsWith('mock_')
-    ) {
+    if (paymentSignature.startsWith('mock_') || paymentSignature === 'mock_signature') {
+      if (!allowMock) {
+        throw new BadRequestException('Mock payments are disabled in this environment.');
+      }
+      // Allowed: bypass verification
+    } else {
+      // Unconditional cryptographic check
+      const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
+      if (!keySecret || keySecret === 'your_razorpay_key_secret') {
+        throw new BadRequestException('Razorpay is not configured on the backend.');
+      }
       try {
         const crypto = require('crypto');
         const hmac = crypto.createHmac('sha256', keySecret);
@@ -299,6 +307,9 @@ export class BookingsService {
           throw new BadRequestException('Invalid Razorpay signature. Security check failed!');
         }
       } catch (err) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
         throw new BadRequestException(`Signature validation error: ${err.message}`);
       }
     }
@@ -619,5 +630,9 @@ export class BookingsService {
     }
 
     return booking;
+  }
+
+  async findOnePlain(bookingId: string) {
+    return this.getBookingOrFail(bookingId);
   }
 }

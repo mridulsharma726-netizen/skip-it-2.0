@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, Req, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import {
@@ -64,9 +64,20 @@ export class BookingsController {
 
   // ─── PAYMENT SIMULATION (Mobile Custom Checkout) ──────────
   @Patch(':id/pay')
-  pay(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async pay(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    const booking = await this.bookingsService.findOnePlain(id);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    if (booking.renter_id !== req.user.id) {
+      throw new ForbiddenException('You are not authorized to pay for this booking');
+    }
+
     const paymentId = body.paymentId || `pay_mock_${Date.now()}`;
-    return this.bookingsService.markPaid(id, 'mock_order_id', paymentId, 'mock_signature');
+    const orderId = body.orderId || body.paymentOrderId || 'mock_order_id';
+    const signature = body.signature || body.paymentSignature || 'mock_signature';
+
+    return this.bookingsService.markPaid(id, orderId, paymentId, signature, req.user.id);
   }
 
   // ─── SHARED ACTIONS ────────────────────────────────────────

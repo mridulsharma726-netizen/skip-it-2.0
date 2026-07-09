@@ -165,8 +165,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> with SingleTick
               onPressed: () {
                 Navigator.pop(context);
                 final randomPaymentId = 'pay_${DateTime.now().millisecondsSinceEpoch}';
+                final mockOrderId = booking.paymentOrderId ?? 'order_mock_${DateTime.now().millisecondsSinceEpoch}';
+                const mockSignature = 'mock_signature';
                 _handleAction(() async {
-                  await ref.read(bookingsRepositoryProvider).payBooking(booking.id, randomPaymentId);
+                  await ref.read(bookingsRepositoryProvider).payBooking(
+                    booking.id,
+                    randomPaymentId,
+                    mockOrderId,
+                    mockSignature,
+                  );
                 }, 'Processing secure payment...');
               },
             ),
