@@ -209,7 +209,12 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
 
                   Future.delayed(const Duration(seconds: 2), () async {
                     try {
-                      await ref.read(bookingsRepositoryProvider).payBooking(booking.id, paymentId);
+                      await ref.read(bookingsRepositoryProvider).payBooking(
+                        booking.id,
+                        paymentId,
+                        'order_mock_${DateTime.now().millisecondsSinceEpoch}',
+                        'mock_signature',
+                      );
                       ref.read(renterBookingsProvider.notifier).refresh();
                       
                       if (context.mounted) {
