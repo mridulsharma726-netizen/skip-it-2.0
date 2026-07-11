@@ -22,7 +22,7 @@ import {
 
 // Configure Supabase client using credentials from root .env
 const SUPABASE_URL = 'https://qjolinnxfovlliameork.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_SdY_IDJI56WuWcM-ngSZzQ_qQ2QQ-__';
+const SUPABASE_ANON_KEY = 'sb_publishable_pz_KqPLn7xanlzbEVmQrSQ_i2FAOIO0';
 const API_BASE_URL = 'http://localhost:3000';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

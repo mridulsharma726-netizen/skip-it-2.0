@@ -8,7 +8,7 @@ class AppConfig {
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'sb_publishable_SdY_IDJI56WuWcM-ngSZzQ_qQ2QQ-__',
+    defaultValue: 'sb_publishable_pz_KqPLn7xanlzbEVmQrSQ_i2FAOIO0',
   );
 
   static const String apiBaseUrl = String.fromEnvironment(
