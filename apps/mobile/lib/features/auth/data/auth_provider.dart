@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
+import 'package:skipit/core/config/app_config.dart';
 
 /// Auth state that can be: loading, authenticated, unauthenticated, or error.
 enum AuthStatus { loading, authenticated, unauthenticated, error }
@@ -75,6 +76,7 @@ class AuthNotifier extends Notifier<AuthState> {
         email: email,
         password: password,
         data: {'full_name': fullName},
+        emailRedirectTo: AppConfig.signupRedirectUrl,
       );
 
       if (response.user != null) {
@@ -150,7 +152,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'http://localhost:5000/auth/v1/callback', // For web testing
+        redirectTo: AppConfig.googleRedirectUrl,
       );
     } catch (e) {
       state = AuthState(
