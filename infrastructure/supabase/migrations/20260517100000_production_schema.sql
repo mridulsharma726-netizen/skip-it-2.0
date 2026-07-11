@@ -25,7 +25,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_listings INTEGER DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rating NUMERIC(2,1) DEFAULT 5.0;
 
 -- Update profiles RLS
-CREATE POLICY IF NOT EXISTS "Users can update their own profile" ON profiles
+CREATE POLICY "Users can update their own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- ============================================================
@@ -76,13 +76,13 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS activated_at TIMESTAMP WITH TIME Z
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
 
 -- Bookings RLS
-CREATE POLICY IF NOT EXISTS "Renters can view their bookings" ON bookings
+CREATE POLICY "Renters can view their bookings" ON bookings
   FOR SELECT USING (auth.uid() = renter_id);
-CREATE POLICY IF NOT EXISTS "Owners can view bookings on their listings" ON bookings
+CREATE POLICY "Owners can view bookings on their listings" ON bookings
   FOR SELECT USING (auth.uid() = owner_id);
-CREATE POLICY IF NOT EXISTS "Renters can create bookings" ON bookings
+CREATE POLICY "Renters can create bookings" ON bookings
   FOR INSERT WITH CHECK (auth.uid() = renter_id);
-CREATE POLICY IF NOT EXISTS "Owners can update bookings" ON bookings
+CREATE POLICY "Owners can update bookings" ON bookings
   FOR UPDATE USING (auth.uid() = owner_id OR auth.uid() = renter_id);
 
 -- ============================================================

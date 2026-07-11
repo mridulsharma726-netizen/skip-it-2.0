@@ -9,6 +9,8 @@ CREATE POLICY "Users can select own profile" ON profiles
   FOR SELECT USING (auth.uid() = id);
 
 -- 3. Create public view profiles_public that filters out PII/sensitive columns
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
 CREATE OR REPLACE VIEW profiles_public AS
 SELECT 
   id, 
