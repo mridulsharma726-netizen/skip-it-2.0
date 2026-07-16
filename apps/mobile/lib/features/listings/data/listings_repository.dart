@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import 'package:skipit/core/config/app_config.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
 import 'package:skipit/features/auth/data/auth_provider.dart';
@@ -83,32 +83,43 @@ class ListingsRepository {
     }
   }
 
-  /// Uploads an image directly to Supabase Storage (bypasses NestJS for large file transfers).
+  /// Uploads an image via NestJS Backend (bypasses RLS by using service_role key on backend).
   Future<String> uploadImage(String filePath, String bucket, String folder) async {
     try {
-      final supabase = Supabase.instance.client;
+      final supabase = _ref.read(supabaseClientProvider);
+      final token = supabase.auth.currentSession?.accessToken;
+
+      if (token == null) throw Exception('Not authenticated');
+
       final ext = filePath.split('.').last.toLowerCase();
-      final filename = '$folder/${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final fileBytes = await File(filePath).readAsBytes();
-
-      await supabase.storage.from(bucket).uploadBinary(
-            filename,
-            fileBytes,
-            fileOptions: FileOptions(
-              contentType: ext == 'png'
-                  ? 'image/png'
-                  : ext == 'webp'
-                      ? 'image/webp'
-                      : 'image/jpeg',
-              upsert: true,
-            ),
-          );
-
-      if (bucket == 'kyc-documents') {
-        return filename; // Return path for private buckets
+      String mimeType = 'image/jpeg';
+      if (ext == 'png') {
+        mimeType = 'image/png';
+      } else if (ext == 'webp') {
+        mimeType = 'image/webp';
       }
 
-      return supabase.storage.from(bucket).getPublicUrl(filename);
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: filePath.split(RegExp(r'[/\\]')).last,
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+
+      final response = await _dio.post(
+        '/storage/upload',
+        queryParameters: {
+          'bucket': bucket,
+          'folder': folder,
+        },
+        data: formData,
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+        }),
+      );
+
+      return response.data['url'] as String;
     } catch (e) {
       throw Exception('Failed to upload image: $e');
     }
