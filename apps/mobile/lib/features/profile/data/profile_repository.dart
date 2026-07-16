@@ -33,7 +33,7 @@ class ProfileRepository {
 
       return UserProfile.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to fetch profile: $e');
+      throw Exception(_handleDioError(e, 'Failed to fetch profile'));
     }
   }
 
@@ -64,7 +64,7 @@ class ProfileRepository {
 
       return UserProfile.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to update profile: $e');
+      throw Exception(_handleDioError(e, 'Failed to update profile'));
     }
   }
 
@@ -87,7 +87,7 @@ class ProfileRepository {
 
       return UserProfile.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to update avatar: $e');
+      throw Exception(_handleDioError(e, 'Failed to update avatar'));
     }
   }
 
@@ -112,7 +112,22 @@ class ProfileRepository {
         }),
       );
     } catch (e) {
-      throw Exception('Failed to submit KYC: $e');
+      throw Exception(_handleDioError(e, 'Failed to submit KYC'));
     }
   }
 }
+
+String _handleDioError(dynamic e, String defaultMessage) {
+  if (e is DioException) {
+    final responseData = e.response?.data;
+    if (responseData is Map && responseData.containsKey('message')) {
+      final msg = responseData['message'];
+      if (msg is List) {
+        return msg.join(', ');
+      }
+      return msg.toString();
+    }
+  }
+  return '$defaultMessage: $e';
+}
+

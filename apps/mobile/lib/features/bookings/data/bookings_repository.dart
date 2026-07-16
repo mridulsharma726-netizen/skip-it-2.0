@@ -88,7 +88,7 @@ class BookingsRepository {
 
       return Booking.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to create booking: $e');
+      throw Exception(_handleDioError(e, 'Failed to create booking'));
     }
   }
 
@@ -179,7 +179,7 @@ class BookingsRepository {
 
       return Booking.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to activate booking: $e');
+      throw Exception(_handleDioError(e, 'Failed to activate booking'));
     }
   }
 
@@ -276,7 +276,21 @@ class BookingsRepository {
         }),
       );
     } catch (e) {
-      throw Exception('Failed to submit review: $e');
+      throw Exception(_handleDioError(e, 'Failed to submit review'));
     }
   }
+}
+
+String _handleDioError(dynamic e, String defaultMessage) {
+  if (e is DioException) {
+    final responseData = e.response?.data;
+    if (responseData is Map && responseData.containsKey('message')) {
+      final msg = responseData['message'];
+      if (msg is List) {
+        return msg.join(', ');
+      }
+      return msg.toString();
+    }
+  }
+  return '$defaultMessage: $e';
 }

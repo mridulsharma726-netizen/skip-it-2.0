@@ -54,9 +54,9 @@ class _KYCVerificationScreenState extends ConsumerState<KYCVerificationScreen> {
     
     try {
       final userId = ref.read(authProvider).user?.id ?? 'anonymous';
-      final supabase = Supabase.instance.client;
 
       // 1. Upload via NestJS Backend (bypasses RLS by using service_role key on backend)
+
       final documentUrl = await ref.read(listingsRepositoryProvider).uploadImage(
             _documentImage!.path,
             'kyc-documents',

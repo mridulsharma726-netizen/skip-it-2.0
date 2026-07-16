@@ -1,12 +1,10 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import 'package:skipit/core/config/app_config.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
-import 'package:skipit/features/auth/data/auth_provider.dart';
 import 'package:skipit/features/listings/domain/models/listing.dart';
+
 
 final listingsRepositoryProvider = Provider<ListingsRepository>((ref) {
   return ListingsRepository(ref);
@@ -79,7 +77,7 @@ class ListingsRepository {
 
       return Listing.fromJson(response.data);
     } catch (e) {
-      throw Exception('Failed to create listing: $e');
+      throw Exception(_handleDioError(e, 'Failed to create listing'));
     }
   }
 
@@ -121,7 +119,22 @@ class ListingsRepository {
 
       return response.data['url'] as String;
     } catch (e) {
-      throw Exception('Failed to upload image: $e');
+      throw Exception(_handleDioError(e, 'Failed to upload image'));
     }
   }
 }
+
+String _handleDioError(dynamic e, String defaultMessage) {
+  if (e is DioException) {
+    final responseData = e.response?.data;
+    if (responseData is Map && responseData.containsKey('message')) {
+      final msg = responseData['message'];
+      if (msg is List) {
+        return msg.join(', ');
+      }
+      return msg.toString();
+    }
+  }
+  return '$defaultMessage: $e';
+}
+
