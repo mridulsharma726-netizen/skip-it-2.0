@@ -10,6 +10,7 @@ import 'package:skipit/features/bookings/data/bookings_provider.dart';
 import 'package:skipit/features/bookings/data/bookings_repository.dart';
 import 'package:skipit/features/bookings/domain/models/booking.dart';
 import 'package:skipit/features/listings/data/listings_repository.dart';
+import 'package:skipit/features/auth/data/auth_provider.dart';
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key});
