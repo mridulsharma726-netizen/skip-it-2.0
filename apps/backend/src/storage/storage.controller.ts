@@ -6,6 +6,7 @@ import {
   UploadedFile,
   BadRequestException,
   Query,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StorageService } from './storage.service';
@@ -28,6 +29,7 @@ export class StorageController {
     @UploadedFile() file: Express.Multer.File,
     @Query('bucket') bucket: string,
     @Query('folder') folder: string,
+    @Req() req: any,
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -38,11 +40,15 @@ export class StorageController {
       throw new BadRequestException(`Invalid bucket: ${bucket}. Allowed: ${allowedBuckets.join(', ')}`);
     }
 
-    const url = await this.storageService.uploadFile(file, bucket, folder || 'uploads');
+    const targetFolder = req.user.id;
+
+    const url = await this.storageService.uploadFile(file, bucket, targetFolder);
 
     // Note: For 'kyc-documents' bucket, url contains the raw storage path (e.g. "userId/uuid.jpg")
-    // rather than a public URL, since it is a private bucket. We keep the property name as 'url'
-    // to maintain compatibility with the mobile client's existing JSON response parser.
+    // rather than a public URL, since it is a private bucket. The upload folder is derived on the
+    // server side using the authenticated user's ID (req.user.id) for all buckets, ignoring the
+    // client's query parameter for security. We keep the property name as 'url' for client-side
+    // compatibility.
     return { url };
   }
 }
