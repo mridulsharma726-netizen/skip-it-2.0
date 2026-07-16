@@ -31,6 +31,7 @@ export class StorageController {
     @Query('folder') folder: string,
     @Req() req: any,
   ) {
+    console.log('STORAGE UPLOAD REQUEST RECEIVED:', { bucket, folder, userId: req?.user?.id });
     if (!file) {
       throw new BadRequestException('No file provided');
     }
