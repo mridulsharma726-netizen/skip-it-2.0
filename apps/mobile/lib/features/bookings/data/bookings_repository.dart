@@ -112,7 +112,7 @@ class BookingsRepository {
     }
   }
 
-  Future<Booking> rejectBooking(String id) async {
+  Future<Booking> rejectBooking(String id, [String reason = 'Owner rejected request']) async {
     try {
       final supabase = _ref.read(supabaseClientProvider);
       final token = supabase.auth.currentSession?.accessToken;
@@ -121,6 +121,9 @@ class BookingsRepository {
 
       final response = await _dio.patch(
         '/bookings/$id/reject',
+        data: {
+          'reason': reason,
+        },
         options: Options(headers: {
           'Authorization': 'Bearer $token',
         }),

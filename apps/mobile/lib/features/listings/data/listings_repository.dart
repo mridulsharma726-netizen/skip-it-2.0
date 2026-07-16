@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skipit/core/config/app_config.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
 import 'package:skipit/features/auth/data/auth_provider.dart';
@@ -15,23 +17,32 @@ class ListingsRepository {
   final Dio _dio = Dio(BaseOptions(
     baseUrl: AppConfig.apiBaseUrl,
     headers: {'bypass-tunnel-reminder': 'true'},
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 15),
   ));
 
   ListingsRepository(this._ref);
 
-  Future<List<Listing>> getListings() async {
+  /// Fetches all listings directly from Supabase (bypasses unreliable NestJS tunnel for reads).
+  Future<List<Listing>> getListings({String? search, String? category}) async {
     try {
-      final response = await _dio.get('/listings');
-      final data = response.data;
-      final List list;
-      if (data is Map) {
-        list = data['data'] ?? [];
-      } else if (data is List) {
-        list = data;
-      } else {
-        list = [];
+      final supabase = _ref.read(supabaseClientProvider);
+      var query = supabase
+          .from('listings')
+          .select('*, owner:profiles!listings_owner_id_fkey(full_name, avatar_url, rating)')
+          .eq('is_available', true);
+
+      if (category != null && category.isNotEmpty && category != 'All') {
+        query = query.eq('category', category);
       }
-      return list.map((item) => Listing.fromJson(item)).toList();
+
+      if (search != null && search.isNotEmpty) {
+        // Search in title and description
+        query = query.or('title.ilike.%$search%,description.ilike.%$search%');
+      }
+
+      final response = await query.order('created_at', ascending: false).limit(50);
+      return (response as List).map((item) => Listing.fromJson(item)).toList();
     } catch (e) {
       throw Exception('Failed to fetch listings: $e');
     }
@@ -72,42 +83,32 @@ class ListingsRepository {
     }
   }
 
+  /// Uploads an image directly to Supabase Storage (bypasses NestJS for large file transfers).
   Future<String> uploadImage(String filePath, String bucket, String folder) async {
     try {
-      final supabase = _ref.read(supabaseClientProvider);
-      final token = supabase.auth.currentSession?.accessToken;
+      final supabase = Supabase.instance.client;
+      final ext = filePath.split('.').last.toLowerCase();
+      final filename = '$folder/${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final fileBytes = await File(filePath).readAsBytes();
 
-      if (token == null) throw Exception('Not authenticated');
+      await supabase.storage.from(bucket).uploadBinary(
+            filename,
+            fileBytes,
+            fileOptions: FileOptions(
+              contentType: ext == 'png'
+                  ? 'image/png'
+                  : ext == 'webp'
+                      ? 'image/webp'
+                      : 'image/jpeg',
+              upsert: true,
+            ),
+          );
 
-      final extension = filePath.split('.').last.toLowerCase();
-      String mimeType = 'image/jpeg';
-      if (extension == 'png') {
-        mimeType = 'image/png';
-      } else if (extension == 'webp') {
-        mimeType = 'image/webp';
+      if (bucket == 'kyc-documents') {
+        return filename; // Return path for private buckets
       }
 
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          filePath,
-          filename: filePath.split(RegExp(r'[/\\]')).last,
-          contentType: MediaType.parse(mimeType),
-        ),
-      });
-
-      final response = await _dio.post(
-        '/storage/upload',
-        queryParameters: {
-          'bucket': bucket,
-          'folder': folder,
-        },
-        data: formData,
-        options: Options(headers: {
-          'Authorization': 'Bearer $token',
-        }),
-      );
-
-      return response.data['url'] as String;
+      return supabase.storage.from(bucket).getPublicUrl(filename);
     } catch (e) {
       throw Exception('Failed to upload image: $e');
     }

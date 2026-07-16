@@ -133,8 +133,7 @@ export class BookingsService {
         end_date: dto.endDate,
         total_price: calculatedTotal,
         deposit_paid: listing.deposit_amount,
-        status: 'approved', // Auto-approved for Instant Book!
-        approved_at: new Date().toISOString(),
+        status: 'requested',
       })
       .select()
       .single();
