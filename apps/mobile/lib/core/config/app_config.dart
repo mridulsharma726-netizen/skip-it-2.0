@@ -13,7 +13,7 @@ class AppConfig {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.29.224:3000/api',
+    defaultValue: 'http://localhost:3000/api',
   );
 
   static const String signupRedirectUrl = String.fromEnvironment(
