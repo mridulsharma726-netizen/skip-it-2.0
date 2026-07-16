@@ -40,6 +40,9 @@ export class StorageController {
 
     const url = await this.storageService.uploadFile(file, bucket, folder || 'uploads');
 
+    // Note: For 'kyc-documents' bucket, url contains the raw storage path (e.g. "userId/uuid.jpg")
+    // rather than a public URL, since it is a private bucket. We keep the property name as 'url'
+    // to maintain compatibility with the mobile client's existing JSON response parser.
     return { url };
   }
 }

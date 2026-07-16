@@ -61,6 +61,10 @@ export class StorageService {
       throw new BadRequestException(`Upload failed: ${error.message}`);
     }
 
+    if (bucket === 'kyc-documents') {
+      return filename;
+    }
+
     // Get the public URL
     const { data } = this.supabaseService.client.storage
       .from(bucket)
@@ -72,16 +76,26 @@ export class StorageService {
   private async ensureBucketExists(bucket: string) {
     try {
       const { data, error } = await this.supabaseService.client.storage.getBucket(bucket);
+      const isPublic = bucket !== 'kyc-documents';
+
       if (error || !data) {
         this.logger.log(`Bucket '${bucket}' not found. Programmatically provisioning it...`);
         const { error: createError } = await this.supabaseService.client.storage.createBucket(bucket, {
-          public: true,
+          public: isPublic,
           fileSizeLimit: this.MAX_SIZE,
         });
         if (createError) {
           this.logger.error(`Failed to programmatically provision bucket '${bucket}': ${createError.message}`);
         } else {
           this.logger.log(`Bucket '${bucket}' programmatically provisioned successfully!`);
+        }
+      } else if (data.public !== isPublic) {
+        this.logger.log(`Bucket '${bucket}' public status mismatch. Updating it to public=${isPublic}...`);
+        const { error: updateError } = await this.supabaseService.client.storage.updateBucket(bucket, {
+          public: isPublic,
+        });
+        if (updateError) {
+          this.logger.error(`Failed to update public status of bucket '${bucket}': ${updateError.message}`);
         }
       }
     } catch (e) {

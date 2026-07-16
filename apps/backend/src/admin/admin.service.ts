@@ -133,9 +133,6 @@ export class AdminService {
     };
   }
 
-  /**
-   * Get all profiles with pending KYC submissions.
-   */
   async getPendingKYC() {
     const { data, error } = await this.supabaseService.client
       .from('profiles')
@@ -143,6 +140,18 @@ export class AdminService {
       .eq('kyc_status', 'pending');
 
     if (error) throw new BadRequestException(`Failed to get pending KYC: ${error.message}`);
+    
+    if (data && data.length > 0) {
+      for (const profile of data) {
+        if (profile.kyc_document_url) {
+          profile.kyc_document_url = await this.generateSignedUrl(profile.kyc_document_url);
+        }
+        if (profile.kyc_selfie_url) {
+          profile.kyc_selfie_url = await this.generateSignedUrl(profile.kyc_selfie_url);
+        }
+      }
+    }
+
     return data || [];
   }
 
@@ -412,5 +421,39 @@ export class AdminService {
       message: `Dispute resolved successfully: funds have been ${resolution === 'release' ? 'released to the owner' : 'returned to the renter'}.`,
       status: targetStatus,
     };
+  }
+
+  private async generateSignedUrl(pathOrUrl: string): Promise<string> {
+    if (!pathOrUrl) return '';
+    // If it starts with http, it is either an external URL or mock URL
+    // (We do not sign non-Supabase storage objects like mock URLs)
+    if (pathOrUrl.startsWith('http') && !pathOrUrl.includes('/kyc-documents/')) {
+      return pathOrUrl;
+    }
+
+    // Extract path: if it's already a path, use it. If it contains /kyc-documents/, extract from there.
+    let path = pathOrUrl;
+    const marker = '/kyc-documents/';
+    const index = pathOrUrl.indexOf(marker);
+    if (index !== -1) {
+      path = pathOrUrl.substring(index + marker.length);
+      // Strip query params if any
+      const qIndex = path.indexOf('?');
+      if (qIndex !== -1) {
+        path = path.substring(0, qIndex);
+      }
+      path = decodeURIComponent(path);
+    }
+
+    const { data, error } = await this.supabaseService.client.storage
+      .from('kyc-documents')
+      .createSignedUrl(path, 600); // 10 minutes expiry
+
+    if (error || !data) {
+      this.logger.warn(`Failed to generate signed URL for path ${path}: ${error?.message}`);
+      return pathOrUrl; // fallback
+    }
+
+    return data.signedUrl;
   }
 }
