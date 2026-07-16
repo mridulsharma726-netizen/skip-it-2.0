@@ -55,14 +55,30 @@ class ListingOwner {
   final String? fullName;
   final String? avatarUrl;
   final double? rating;
+  final int? trustScore;
+  final int? totalReviews;
+  final DateTime? createdAt;
+  final bool? isVerified;
 
-  ListingOwner({this.fullName, this.avatarUrl, this.rating});
+  ListingOwner({
+    this.fullName,
+    this.avatarUrl,
+    this.rating,
+    this.trustScore,
+    this.totalReviews,
+    this.createdAt,
+    this.isVerified,
+  });
 
   factory ListingOwner.fromJson(Map<String, dynamic> json) {
     return ListingOwner(
       fullName: json['full_name'],
       avatarUrl: json['avatar_url'],
       rating: json['rating']?.toDouble(),
+      trustScore: json['trust_score'] as int?,
+      totalReviews: json['total_reviews'] as int?,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      isVerified: json['is_verified'] as bool?,
     );
   }
 }

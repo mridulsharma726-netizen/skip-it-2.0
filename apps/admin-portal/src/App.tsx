@@ -27,7 +27,7 @@ const API_BASE_URL = 'http://localhost:3000';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-type ActiveTab = 'dashboard' | 'kyc' | 'users' | 'listings' | 'disputes';
+type ActiveTab = 'dashboard' | 'kyc' | 'users' | 'listings' | 'disputes' | 'logs';
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -41,6 +41,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [stats, setStats] = useState<any>(null);
   const [pendingKyc, setPendingKyc] = useState<any[]>([]);
+  const [approvedKyc, setApprovedKyc] = useState<any[]>([]);
+  const [rejectedKyc, setRejectedKyc] = useState<any[]>([]);
+  const [kycSubTab, setKycSubTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
   const [disputes, setDisputes] = useState<any>({ disputedBookings: [], userReports: [] });
@@ -123,10 +127,22 @@ export default function App() {
       if (statsRes.ok) setStats(await statsRes.json());
 
       // Pending KYC API
-      const kycRes = await fetch(`${API_BASE_URL}/admin/kyc`, {
+      const kycRes = await fetch(`${API_BASE_URL}/admin/kyc?status=pending`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (kycRes.ok) setPendingKyc(await kycRes.json());
+
+      // Approved KYC API
+      const approvedKycRes = await fetch(`${API_BASE_URL}/admin/kyc?status=approved`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (approvedKycRes.ok) setApprovedKyc(await approvedKycRes.json());
+
+      // Rejected KYC API
+      const rejectedKycRes = await fetch(`${API_BASE_URL}/admin/kyc?status=rejected`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (rejectedKycRes.ok) setRejectedKyc(await rejectedKycRes.json());
 
       // Users API
       const usersRes = await fetch(`${API_BASE_URL}/admin/users`, {
@@ -145,6 +161,12 @@ export default function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (disputesRes.ok) setDisputes(await disputesRes.json());
+
+      // Audit Logs API
+      const logsRes = await fetch(`${API_BASE_URL}/admin/audit-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (logsRes.ok) setAuditLogs(await logsRes.json());
     } catch (err) {
       console.error('API fetch failed:', err);
     } finally {
@@ -152,12 +174,17 @@ export default function App() {
     }
   };
 
-  // Refresh current tab data
+  // Refresh current tab data & poll every 5 seconds for real-time dashboard updates
   useEffect(() => {
     if (isAdmin) {
       fetchData();
+      const interval = setInterval(() => {
+        // Fetch data silently in the background
+        fetchData();
+      }, 5000);
+      return () => clearInterval(interval);
     }
-  }, [activeTab]);
+  }, [isAdmin, activeTab]);
 
   // Moderation Handlers
   const handleApproveKyc = async (profileId: string) => {
@@ -455,6 +482,18 @@ export default function App() {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+              activeTab === 'logs'
+                ? 'bg-[#a855f7]/15 text-[#a855f7] border border-[#a855f7]/30'
+                : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Shield className="h-4 w-4" />
+            <span>Trust & Audit Logs</span>
+          </button>
         </nav>
 
         <div className="mt-auto border-t border-white/5 pt-4">
@@ -485,6 +524,7 @@ export default function App() {
               {activeTab === 'users' && 'User Directory & Moderation'}
               {activeTab === 'listings' && 'Inventory Moderation'}
               {activeTab === 'disputes' && 'Dispute Resolution Hub'}
+              {activeTab === 'logs' && 'Trust & Admin Audit Logs'}
             </h1>
             <p className="text-xs text-[#94a3b8] mt-1">
               Real-time synchronization with SkipIt P2P engine.
@@ -625,87 +665,153 @@ export default function App() {
 
         {/* 2. KYC VERIFICATION TAB */}
         {activeTab === 'kyc' && (
-          <div className="flex flex-col gap-4">
-            {pendingKyc.length === 0 ? (
-              <div className="glass-panel p-16 text-center">
-                <CheckCircle className="h-12 w-12 text-[#10b981] mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-white mb-1">Clear Ledger</h3>
-                <p className="text-sm text-[#94a3b8]">All submitted customer identity files have been moderated.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {pendingKyc.map((user) => (
-                  <div key={user.id} className="glass-panel p-6 flex flex-col md:flex-row gap-6 relative">
-                    <div className="flex-1 flex flex-col gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-[#a855f7]/10 rounded-full flex items-center justify-center font-bold text-[#a855f7] border border-[#a855f7]/25">
-                          {user.full_name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <h3 className="text-base font-bold text-white">{user.full_name}</h3>
-                          <p className="text-xs text-[#94a3b8]">{user.phone || 'No phone'}</p>
-                        </div>
-                      </div>
+          <div className="flex flex-col gap-6">
+            {/* Sub-tab selection bar */}
+            <div className="flex gap-2 p-1.5 bg-white/5 rounded-xl border border-white/5 w-max">
+              <button
+                onClick={() => setKycSubTab('pending')}
+                className={`px-5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  kycSubTab === 'pending'
+                    ? 'bg-[#a855f7] text-white shadow-lg shadow-[#a855f7]/30'
+                    : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Pending Review ({pendingKyc.length})
+              </button>
+              <button
+                onClick={() => setKycSubTab('approved')}
+                className={`px-5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  kycSubTab === 'approved'
+                    ? 'bg-[#10b981] text-white shadow-lg shadow-[#10b981]/30'
+                    : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Approved ({approvedKyc.length})
+              </button>
+              <button
+                onClick={() => setKycSubTab('rejected')}
+                className={`px-5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  kycSubTab === 'rejected'
+                    ? 'bg-[#ef4444] text-white shadow-lg shadow-[#ef4444]/30'
+                    : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Rejected ({rejectedKyc.length})
+              </button>
+            </div>
 
-                      <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
-                        <div className="flex flex-col text-left">
-                          <span className="text-[10px] text-[#94a3b8] uppercase font-semibold">Document Type</span>
-                          <span className="text-sm font-bold text-white">{user.kyc_document_type || 'Unspecified'}</span>
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className="text-[10px] text-[#94a3b8] uppercase font-semibold">Verification Status</span>
-                          <span className="badge badge-warning w-max mt-1">{user.kyc_status}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3 mt-auto pt-4">
-                        <button
-                          onClick={() => handleApproveKyc(user.id)}
-                          className="glow-button py-2.5 px-6 text-sm"
-                        >
-                          <Check className="h-4 w-4" />
-                          <span>Approve & Verify</span>
-                        </button>
-                        <button
-                          onClick={() => setSelectedUserForReject(user.id)}
-                          className="secondary-button border-red-500/20 text-[#ef4444] hover:bg-red-500/10 py-2.5 px-6 text-sm"
-                        >
-                          <XCircle className="h-4 w-4" />
-                          <span>Reject Submission</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Document Preview Image */}
-                    <div className="w-full md:w-80 h-48 rounded-xl bg-black/40 border border-white/5 overflow-hidden relative group shrink-0 flex items-center justify-center">
-                      {user.kyc_document_url ? (
-                        <>
-                          <img
-                            src={user.kyc_document_url}
-                            alt="KYC Document Preview"
-                            className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <a
-                            href={user.kyc_document_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="absolute bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>View Original</span>
-                          </a>
-                        </>
-                      ) : (
-                        <div className="text-center p-4">
-                          <FileText className="h-8 w-8 text-[#94a3b8] mx-auto mb-2" />
-                          <span className="text-xs text-[#94a3b8]">No uploaded document image found</span>
-                        </div>
-                      )}
-                    </div>
+            {(() => {
+              const list = kycSubTab === 'pending' ? pendingKyc : kycSubTab === 'approved' ? approvedKyc : rejectedKyc;
+              if (list.length === 0) {
+                return (
+                  <div className="glass-panel p-16 text-center">
+                    <CheckCircle className={`h-12 w-12 ${kycSubTab === 'pending' ? 'text-[#10b981]' : kycSubTab === 'approved' ? 'text-[#a855f7]' : 'text-[#ef4444]'} mx-auto mb-4`} />
+                    <h3 className="text-lg font-bold text-white mb-1">
+                      {kycSubTab === 'pending' && 'Clear Ledger'}
+                      {kycSubTab === 'approved' && 'No Approved Users'}
+                      {kycSubTab === 'rejected' && 'No Rejected Files'}
+                    </h3>
+                    <p className="text-sm text-[#94a3b8] max-w-sm mx-auto">
+                      {kycSubTab === 'pending' && 'All submitted customer identity files have been moderated.'}
+                      {kycSubTab === 'approved' && 'No users have verified KYC documents currently.'}
+                      {kycSubTab === 'rejected' && 'There are no rejected KYC files on record.'}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 gap-6">
+                  {list.map((user) => (
+                    <div key={user.id} className="glass-panel p-6 flex flex-col md:flex-row gap-6 relative">
+                      <div className="flex-1 flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-[#a855f7]/10 rounded-full flex items-center justify-center font-bold text-[#a855f7] border border-[#a855f7]/25">
+                            {user.full_name?.charAt(0) || 'U'}
+                          </div>
+                          <div className="text-left">
+                            <h3 className="text-base font-bold text-white mb-0">{user.full_name || 'Standard User'}</h3>
+                            <p className="text-xs text-[#94a3b8] mb-0">{user.phone || 'No verified phone'}</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
+                          <div className="flex flex-col text-left">
+                            <span className="text-[10px] text-[#94a3b8] uppercase font-semibold">Document Type</span>
+                            <span className="text-sm font-bold text-white">{user.kyc_document_type || 'Government ID'}</span>
+                          </div>
+                          <div className="flex flex-col text-left">
+                            <span className="text-[10px] text-[#94a3b8] uppercase font-semibold">Verification Status</span>
+                            <span className={`badge w-max mt-1 ${
+                              user.kyc_status === 'approved' 
+                                ? 'badge-success' 
+                                : user.kyc_status === 'rejected' 
+                                ? 'badge-danger' 
+                                : 'badge-warning'
+                            }`}>{user.kyc_status?.toUpperCase()}</span>
+                          </div>
+                        </div>
+
+                        {user.kyc_reviewer_notes && (
+                          <div className="p-3.5 rounded-xl bg-red-500/5 border border-red-500/10 text-left">
+                            <p className="text-[11px] font-bold text-[#ef4444] uppercase tracking-wider mb-1">Rejection Reason</p>
+                            <p className="text-xs text-[#fca5a5] mb-0">{user.kyc_reviewer_notes}</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-3 mt-auto pt-4">
+                          {kycSubTab !== 'approved' && (
+                            <button
+                              onClick={() => handleApproveKyc(user.id)}
+                              className="glow-button py-2.5 px-6 text-sm"
+                            >
+                              <Check className="h-4 w-4" />
+                              <span>{kycSubTab === 'rejected' ? 'Re-Approve & Verify' : 'Approve & Verify'}</span>
+                            </button>
+                          )}
+                          {kycSubTab === 'pending' && (
+                            <button
+                              onClick={() => setSelectedUserForReject(user.id)}
+                              className="secondary-button border-red-500/20 text-[#ef4444] hover:bg-red-500/10 py-2.5 px-6 text-sm"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span>Reject Submission</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Document Preview Image */}
+                      <div className="w-full md:w-80 h-48 rounded-xl bg-black/40 border border-white/5 overflow-hidden relative group shrink-0 flex items-center justify-center">
+                        {user.kyc_document_url ? (
+                          <>
+                            <img
+                              src={user.kyc_document_url}
+                              alt="KYC Document Preview"
+                              className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <a
+                              href={user.kyc_document_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="absolute bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>View Original</span>
+                            </a>
+                          </>
+                        ) : (
+                          <div className="text-center p-4">
+                            <FileText className="h-8 w-8 text-[#94a3b8] mx-auto mb-2" />
+                            <span className="text-xs text-[#94a3b8]">No uploaded document image found</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -941,6 +1047,63 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 6. TRUST & AUDIT LOGS TAB */}
+        {activeTab === 'logs' && (
+          <div className="flex flex-col gap-6">
+            <h3 className="text-lg font-bold text-white mb-1">Administrative Audit Trail</h3>
+            {auditLogs.length === 0 ? (
+              <div className="glass-panel p-10 text-center">
+                <CheckCircle className="h-10 w-10 text-[#94a3b8] mx-auto mb-2" />
+                <p className="text-sm text-[#94a3b8]">No audit logs found on record.</p>
+              </div>
+            ) : (
+              <div className="glass-panel overflow-hidden border border-white/5">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 border-b border-white/5 text-[11px] font-bold text-[#94a3b8] uppercase tracking-wider">
+                        <th className="p-4">Timestamp</th>
+                        <th className="p-4">Actor</th>
+                        <th className="p-4">Action</th>
+                        <th className="p-4">Entity</th>
+                        <th className="p-4">Entity ID</th>
+                        <th className="p-4">Changes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs text-[#cbd5e1]">
+                      {auditLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-white/[0.02]">
+                          <td className="p-4 whitespace-nowrap text-[#94a3b8]">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="p-4">
+                            <span className="font-semibold text-white">{log.actor?.full_name || 'System'}</span>
+                            <span className="block text-[10px] text-[#06b6d4] uppercase font-bold">{log.actor?.role}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="badge badge-info">{log.action}</span>
+                          </td>
+                          <td className="p-4 uppercase text-[10px] font-bold tracking-wider">{log.entity_type}</td>
+                          <td className="p-4 font-mono text-[10px] text-[#94a3b8]">{log.entity_id || 'N/A'}</td>
+                          <td className="p-4 max-w-xs truncate">
+                            {log.new_data ? (
+                              <span className="font-mono text-[10px] text-[#c084fc]">
+                                {JSON.stringify(log.new_data)}
+                              </span>
+                            ) : (
+                              <span className="text-[#94a3b8] italic">No changes</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

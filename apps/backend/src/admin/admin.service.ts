@@ -133,13 +133,14 @@ export class AdminService {
     };
   }
 
-  async getPendingKYC() {
+  async getKYCList(status?: string) {
+    const kycStatus = status || 'pending';
     const { data, error } = await this.supabaseService.client
       .from('profiles')
       .select('*')
-      .eq('kyc_status', 'pending');
+      .eq('kyc_status', kycStatus);
 
-    if (error) throw new BadRequestException(`Failed to get pending KYC: ${error.message}`);
+    if (error) throw new BadRequestException(`Failed to get KYC list: ${error.message}`);
     
     if (data && data.length > 0) {
       for (const profile of data) {
@@ -455,5 +456,18 @@ export class AdminService {
     }
 
     return data.signedUrl;
+  }
+
+  /**
+   * Get all administrative activity logs.
+   */
+  async getAuditLogs() {
+    const { data, error } = await this.supabaseService.client
+      .from('audit_log')
+      .select('*, actor:profiles!actor_id(id, full_name, role)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new BadRequestException(`Failed to fetch audit logs: ${error.message}`);
+    return data || [];
   }
 }

@@ -634,6 +634,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> with SingleTick
                       }, 'Cancelling booking request...'),
                       child: const Text('Cancel Request', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
+                  if (booking.status == 'completed' && !booking.hasReviewBy(ref.read(authProvider).user?.id ?? ''))
+                    SkipItButton(
+                      label: 'Write a Review',
+                      onPressed: () => _showReviewDialog(booking),
+                    ),
                 ] else ...[
                   // OWNER ACTIONS
                   if (booking.status == 'requested') ...[
@@ -671,6 +676,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> with SingleTick
                       label: 'Verify Return Condition & Complete',
                       onPressed: () => _showReturnCompleteSheet(booking),
                     ),
+                  if (booking.status == 'completed' && !booking.hasReviewBy(ref.read(authProvider).user?.id ?? ''))
+                    SkipItButton(
+                      label: 'Write a Review',
+                      onPressed: () => _showReviewDialog(booking),
+                    ),
                 ],
               ],
             ),
@@ -697,6 +707,81 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> with SingleTick
           ),
         ),
       ],
+    );
+  }
+
+  void _showReviewDialog(Booking booking) {
+    int selectedRating = 5;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Submit Review', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How was your experience with this rental transaction?', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starRating = index + 1;
+                  return IconButton(
+                    icon: Icon(
+                      selectedRating >= starRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () {
+                      setDialogState(() {
+                        selectedRating = starRating;
+                      });
+                    },
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Share your feedback (condition, timing, communication...)',
+                  hintStyle: const TextStyle(color: AppColors.textSecondary),
+                  fillColor: AppColors.background,
+                  filled: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _handleAction(() async {
+                Navigator.pop(context);
+                await ref.read(bookingsRepositoryProvider).submitReview(
+                  bookingId: booking.id,
+                  rating: selectedRating,
+                  comment: commentController.text.trim(),
+                );
+              }, 'Submitting review...'),
+              child: const Text('Submit', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

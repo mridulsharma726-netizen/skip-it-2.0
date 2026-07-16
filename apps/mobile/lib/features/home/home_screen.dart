@@ -6,6 +6,7 @@ import 'package:skipit/core/services/location_service.dart';
 import 'package:skipit/features/auth/data/auth_provider.dart';
 import 'package:skipit/features/listings/data/listings_provider.dart';
 import 'package:skipit/features/listings/presentation/widgets/listing_card.dart';
+import 'package:skipit/features/profile/data/profile_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -311,7 +312,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         height: 60,
         margin: const EdgeInsets.symmetric(horizontal: 24),
         child: ElevatedButton(
-          onPressed: () => context.push('/add-listing'),
+          onPressed: () {
+            final profileAsync = ref.read(profileProvider);
+            profileAsync.when(
+              data: (profile) {
+                if (profile.kycStatus == 'approved') {
+                  context.push('/add-listing');
+                } else if (profile.kycStatus == 'pending') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your KYC is under review. Listings will be enabled after approval.', style: TextStyle(color: AppColors.white)),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                } else {
+                  // Direct to KYC verification
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: AppColors.surface,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.verified_user, color: AppColors.primary, size: 28),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Verification Required',
+                              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: Text(
+                        profile.kycStatus == 'rejected'
+                            ? 'Your KYC verification was rejected. Please re-submit your documents to continue.'
+                            : 'To ensure safety in our community, you must verify your identity (KYC) before listing products for rent.',
+                        style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            context.push('/kyc');
+                          },
+                          child: const Text('Verify Now', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              loading: () {},
+              error: (_, __) {
+                context.push('/add-listing');
+              },
+            );
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.surface,
             foregroundColor: AppColors.primary,

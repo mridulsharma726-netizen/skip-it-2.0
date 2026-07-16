@@ -9,10 +9,23 @@ export class ListingsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
   async create(userId: string, dto: CreateListingDto) {
-    // Enforce real KYC before allowing listing creation
+    // 1. Fetch user auth information to check email/phone confirmation
+    const { data: authUser, error: authUserErr } = await this.supabaseService.client.auth.admin.getUserById(userId);
+    if (authUserErr || !authUser || !authUser.user) {
+      throw new ForbiddenException('User authentication details not found');
+    }
+
+    const emailConfirmed = !!authUser.user.email_confirmed_at;
+    const phoneConfirmed = !!authUser.user.phone_confirmed_at || !!authUser.user.phone;
+
+    if (!emailConfirmed) {
+      throw new ForbiddenException('Please verify your email address before listing products.');
+    }
+
+    // 2. Enforce real KYC, active status, and phone in profile
     const { data: profile, error: profileError } = await this.supabaseService.client
       .from('profiles')
-      .select('is_banned, kyc_status')
+      .select('is_banned, kyc_status, phone')
       .eq('id', userId)
       .single();
 
@@ -22,6 +35,10 @@ export class ListingsService {
 
     if (profile.is_banned) {
       throw new ForbiddenException('Your account has been suspended');
+    }
+
+    if (!phoneConfirmed && !profile.phone) {
+      throw new ForbiddenException('Please verify your phone number before listing products.');
     }
 
     if (profile.kyc_status !== 'approved') {
@@ -196,7 +213,7 @@ export class ListingsService {
   async findOne(id: string) {
     const { data, error } = await this.supabaseService.client
       .from('listings')
-      .select('*, owner:profiles(id, full_name, avatar_url, rating, is_verified, bio, trust_score, created_at)')
+      .select('*, owner:profiles(id, full_name, avatar_url, rating, is_verified, bio, trust_score, total_reviews, created_at)')
       .eq('id', id)
       .single();
 

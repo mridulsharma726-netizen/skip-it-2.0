@@ -29,7 +29,7 @@ class ListingsRepository {
       final supabase = _ref.read(supabaseClientProvider);
       var query = supabase
           .from('listings')
-          .select('*, owner:profiles!listings_owner_id_fkey(full_name, avatar_url, rating)')
+          .select('*, owner:profiles!listings_owner_id_fkey(full_name, avatar_url, rating, trust_score, total_reviews, created_at, is_verified)')
           .eq('is_available', true);
 
       if (category != null && category.isNotEmpty && category != 'All') {

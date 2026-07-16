@@ -17,6 +17,7 @@ class Booking {
   final double damageDeduction;
   final String? paymentId;
   final Listing? listing;
+  final List<dynamic>? reviews;
 
   Booking({
     required this.id,
@@ -35,6 +36,7 @@ class Booking {
     required this.damageDeduction,
     this.paymentId,
     this.listing,
+    this.reviews,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,12 @@ class Booking {
       damageDeduction: (json['damage_deduction'] as num?)?.toDouble() ?? 0.0,
       paymentId: json['payment_id'],
       listing: json['listing'] != null ? Listing.fromJson(json['listing']) : null,
+      reviews: json['reviews'] as List<dynamic>?,
     );
+  }
+
+  bool hasReviewBy(String reviewerId) {
+    if (reviews == null) return false;
+    return reviews!.any((r) => r['reviewer_id'] == reviewerId);
   }
 }

@@ -11,6 +11,7 @@ import { KycModule } from './kyc/kyc.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { AdminModule } from './admin/admin.module';
 import { MessagesModule } from './messages/messages.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MessagesModule } from './messages/messages.module';
     WishlistModule,
     AdminModule,
     MessagesModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

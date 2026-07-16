@@ -252,4 +252,31 @@ class BookingsRepository {
       throw Exception('Failed to cancel booking: $e');
     }
   }
+
+  Future<void> submitReview({
+    required String bookingId,
+    required int rating,
+    required String comment,
+  }) async {
+    try {
+      final supabase = _ref.read(supabaseClientProvider);
+      final token = supabase.auth.currentSession?.accessToken;
+
+      if (token == null) throw Exception('Not authenticated');
+
+      await _dio.post(
+        '/reviews',
+        data: {
+          'bookingId': bookingId,
+          'rating': rating,
+          'comment': comment,
+        },
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+        }),
+      );
+    } catch (e) {
+      throw Exception('Failed to submit review: $e');
+    }
+  }
 }

@@ -23,8 +23,13 @@ export class AdminController {
   }
 
   @Get('kyc')
-  async getPendingKYC() {
-    return this.adminService.getPendingKYC();
+  async getPendingKYC(@Query('status') status?: string) {
+    return this.adminService.getKYCList(status);
+  }
+
+  @Get('audit-logs')
+  async getAuditLogs() {
+    return this.adminService.getAuditLogs();
   }
 
   @Post('kyc/:id/approve')

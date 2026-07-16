@@ -360,9 +360,12 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 20),
-                      const SizedBox(width: 4),
-                      Text('${widget.listing.owner?.rating?.toString() ?? '5.0'} (12 reviews)', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 16)),
+                      Text(
+                        widget.listing.owner?.rating != null && widget.listing.owner!.rating! > 0.0
+                            ? '${widget.listing.owner!.rating!.toStringAsFixed(1)} (${widget.listing.owner?.totalReviews ?? 0} reviews)'
+                            : '⭐ New User',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 16),
+                      ),
                       const SizedBox(width: 16),
                       const Icon(Icons.location_on_outlined, color: AppColors.textSecondary, size: 20),
                       const SizedBox(width: 4),
@@ -400,11 +403,15 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                             ),
                             const SizedBox(height: 4),
-                            const Text('Joined 2026 \u2022 Super Renter', style: TextStyle(color: AppColors.textSecondary)),
+                            Text(
+                              'Joined ${widget.listing.owner?.createdAt?.year ?? DateTime.now().year} \u2022 Trust: ${widget.listing.owner?.trustScore ?? 50}%',
+                              style: const TextStyle(color: AppColors.textSecondary),
+                            ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.verified, color: AppColors.primary, size: 32),
+                      if (widget.listing.owner?.isVerified == true)
+                        const Icon(Icons.verified, color: AppColors.primary, size: 32),
                       const SizedBox(width: 12),
                       IconButton(
                         icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primary, size: 28),

@@ -594,7 +594,7 @@ export class BookingsService {
   async findByRenter(renterId: string) {
     const { data, error } = await this.supabaseService.client
       .from('bookings')
-      .select('*, listing:listings(id, title, images, price_per_day, category)')
+      .select('*, listing:listings(id, title, images, price_per_day, category), reviews(*)')
       .eq('renter_id', renterId)
       .order('created_at', { ascending: false });
 
@@ -609,7 +609,7 @@ export class BookingsService {
   async findByOwner(ownerId: string) {
     const { data, error } = await this.supabaseService.client
       .from('bookings')
-      .select('*, listing:listings(id, title, images, price_per_day, category), renter:profiles!renter_id(full_name, avatar_url, rating, is_verified)')
+      .select('*, listing:listings(id, title, images, price_per_day, category), renter:profiles!renter_id(full_name, avatar_url, rating, is_verified), reviews(*)')
       .eq('owner_id', ownerId)
       .order('created_at', { ascending: false });
 
