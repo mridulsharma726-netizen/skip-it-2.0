@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skipit/core/theme/app_colors.dart';
 import 'package:skipit/core/widgets/skipit_widgets.dart';
 import 'package:skipit/features/auth/data/auth_provider.dart';
+import 'package:skipit/features/listings/data/listings_repository.dart';
 import 'package:skipit/features/profile/data/profile_repository.dart';
 import 'package:skipit/features/profile/data/profile_provider.dart';
 
@@ -55,30 +56,21 @@ class _KYCVerificationScreenState extends ConsumerState<KYCVerificationScreen> {
       final userId = ref.read(authProvider).user?.id ?? 'anonymous';
       final supabase = Supabase.instance.client;
 
-      // 1. Upload directly to Supabase Storage from mobile (bypasses unreliable NestJS tunnel)
-      final fileBytes = await File(_documentImage!.path).readAsBytes();
-      final ext = _documentImage!.path.split('.').last.toLowerCase();
-      final filename = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
-
-      await supabase.storage
-          .from('kyc-documents')
-          .uploadBinary(
-            filename,
-            fileBytes,
-            fileOptions: FileOptions(
-              contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
-              upsert: true,
-            ),
+      // 1. Upload via NestJS Backend (bypasses RLS by using service_role key on backend)
+      final documentUrl = await ref.read(listingsRepositoryProvider).uploadImage(
+            _documentImage!.path,
+            'kyc-documents',
+            userId,
           );
 
       setState(() {
         _loadingMessage = 'Submitting verification request...';
       });
 
-      // 2. Submit only the storage path (tiny string) to backend KYC API
+      // 2. Submit document details to backend KYC API
       await ref.read(profileRepositoryProvider).submitKYC(
             documentType: _selectedDocumentType,
-            documentUrl: filename,
+            documentUrl: documentUrl,
           );
 
       // 3. Refresh user profile to immediately show "pending" KYC status in UI
@@ -93,16 +85,6 @@ class _KYCVerificationScreenState extends ConsumerState<KYCVerificationScreen> {
           ),
         );
         context.pop();
-      }
-    } on StorageException catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload failed: ${e.message}', style: const TextStyle(color: AppColors.white)),
-            backgroundColor: AppColors.error,
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
