@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:skipit/core/config/app_config.dart';
+import 'package:skipit/core/services/dio_provider.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
 import 'package:skipit/features/listings/domain/models/listing.dart';
 
@@ -12,12 +12,7 @@ final listingsRepositoryProvider = Provider<ListingsRepository>((ref) {
 
 class ListingsRepository {
   final Ref _ref;
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.apiBaseUrl,
-    headers: {'bypass-tunnel-reminder': 'true'},
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
-  ));
+  Dio get _dio => _ref.read(dioProvider);
 
   ListingsRepository(this._ref);
 

@@ -74,31 +74,6 @@ export class ReviewsService {
       throw new BadRequestException(`Failed to create review: ${insertErr.message}`);
     }
 
-    // Fallback: Recalculate average rating & review count for reviewee manually
-    // (In case the DB triggers aren't loaded or active yet)
-    try {
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('rating')
-        .eq('reviewee_id', revieweeId);
-
-      if (reviews && reviews.length > 0) {
-        const total = reviews.length;
-        const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / total;
-        const roundedAvg = Math.round(avg * 10) / 10;
-
-        await supabase
-          .from('profiles')
-          .update({
-            rating: roundedAvg,
-            total_reviews: total,
-          })
-          .eq('id', revieweeId);
-      }
-    } catch (err) {
-      this.logger.warn(`Manual rating recalculation failed: ${err.message}`);
-    }
-
     return review;
   }
 

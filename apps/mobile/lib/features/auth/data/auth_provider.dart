@@ -154,10 +154,17 @@ class AuthNotifier extends Notifier<AuthState> {
         OAuthProvider.google,
         redirectTo: AppConfig.googleRedirectUrl,
       );
-    } catch (e) {
+    } on AuthException catch (e) {
+      print('Supabase Google OAuth error: ${e.message}');
       state = AuthState(
         status: AuthStatus.error,
-        errorMessage: 'Google Sign-In failed. Please try again.',
+        errorMessage: 'Google Sign-In: ${e.message}',
+      );
+    } catch (e) {
+      print('Google sign-in error: $e');
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: 'Google Sign-In failed: ${e.toString()}',
       );
     }
   }

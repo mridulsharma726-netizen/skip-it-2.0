@@ -3,17 +3,17 @@
 class AppConfig {
   static const String supabaseUrl = String.fromEnvironment(
       'SUPABASE_URL',
-      defaultValue: 'https://qjolinnxfovlliameork.supabase.co',
+      defaultValue: 'https://uhrskxkgbpzzanehwefm.supabase.co',
     );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'sb_publishable_pz_KqPLn7xanlzbEVmQrSQ_i2FAOIO0',
+    defaultValue: 'sb_publishable_4KlmMgS5oNhcAZUWPOTGBA_Pgrndepm',
   );
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.29.224:3000/api',
+    defaultValue: 'http://127.0.0.1:3000/api',
   );
 
   static const String signupRedirectUrl = String.fromEnvironment(

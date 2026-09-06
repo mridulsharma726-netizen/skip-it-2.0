@@ -54,6 +54,23 @@ describe('Listings and Profile Security Tests', () => {
 
   const mockSupabaseService = {
     client: {
+      auth: {
+        admin: {
+          getUserById: jest.fn().mockImplementation((userId: string) => {
+            return Promise.resolve({
+              data: {
+                user: {
+                  id: userId,
+                  email_confirmed_at: '2026-01-01T00:00:00Z',
+                  phone_confirmed_at: '2026-01-01T00:00:00Z',
+                  phone: '+919999999999',
+                },
+              },
+              error: null,
+            });
+          }),
+        },
+      },
       from: jest.fn().mockImplementation((table: string) => {
         return {
           select: jest.fn().mockImplementation((selectString?: string) => {

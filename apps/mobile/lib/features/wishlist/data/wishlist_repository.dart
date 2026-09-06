@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:skipit/core/config/app_config.dart';
+import 'package:skipit/core/services/dio_provider.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
 import 'package:skipit/features/listings/domain/models/listing.dart';
 
@@ -10,10 +10,7 @@ final wishlistRepositoryProvider = Provider<WishlistRepository>((ref) {
 
 class WishlistRepository {
   final Ref _ref;
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.apiBaseUrl,
-    headers: {'bypass-tunnel-reminder': 'true'},
-  ));
+  Dio get _dio => _ref.read(dioProvider);
 
   WishlistRepository(this._ref);
 

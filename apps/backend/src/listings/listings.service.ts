@@ -92,89 +92,9 @@ export class ListingsService {
   }
 
   async findAll(options?: { category?: string; search?: string; minPrice?: number; maxPrice?: number; page?: number; limit?: number; sort?: string }) {
-    if (options?.search) {
-      // Escape SQL LIKE wildcards % and _
-      const escapedSearch = options.search
-        .replace(/\\/g, '\\\\')
-        .replace(/%/g, '\\%')
-        .replace(/_/g, '\\_');
-      const pattern = `%${escapedSearch}%`;
-
-      const buildBaseQuery = () => {
-        let q = this.supabaseService.client
-          .from('listings')
-          .select('*, owner:profiles(full_name, avatar_url, rating, is_verified)')
-          .eq('is_available', true);
-
-        if (options?.category) {
-          q = q.eq('category', options.category);
-        }
-        if (options?.minPrice !== undefined) {
-          q = q.gte('price_per_day', options.minPrice);
-        }
-        if (options?.maxPrice !== undefined) {
-          q = q.lte('price_per_day', options.maxPrice);
-        }
-        return q;
-      };
-
-      const [titleResult, descResult] = await Promise.all([
-        buildBaseQuery().ilike('title', pattern),
-        buildBaseQuery().ilike('description', pattern),
-      ]);
-
-      if (titleResult.error) {
-        throw new BadRequestException(titleResult.error.message);
-      }
-      if (descResult.error) {
-        throw new BadRequestException(descResult.error.message);
-      }
-
-      // Merge and deduplicate by listing ID
-      const mergedListingsMap = new Map<string, any>();
-      titleResult.data?.forEach((item) => mergedListingsMap.set(item.id, item));
-      descResult.data?.forEach((item) => mergedListingsMap.set(item.id, item));
-      const mergedListings = Array.from(mergedListingsMap.values());
-
-      // Apply sorting in memory
-      const sortField = options?.sort === 'price_asc' ? 'price_per_day' :
-                         options?.sort === 'price_desc' ? 'price_per_day' :
-                         'created_at';
-      const ascending = options?.sort === 'price_asc';
-
-      mergedListings.sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-
-        if (sortField === 'created_at') {
-          const timeA = new Date(valA).getTime();
-          const timeB = new Date(valB).getTime();
-          return ascending ? timeA - timeB : timeB - timeA;
-        } else {
-          const numA = Number(valA) || 0;
-          const numB = Number(valB) || 0;
-          return ascending ? numA - numB : numB - numA;
-        }
-      });
-
-      // Apply pagination in memory
-      const page = options?.page || 1;
-      const limit = Math.min(options?.limit || 20, 50);
-      const from = (page - 1) * limit;
-      const paginatedListings = mergedListings.slice(from, from + limit);
-
-      return {
-        data: paginatedListings,
-        page,
-        limit,
-        total: mergedListings.length,
-      };
-    }
-
-    // Default path without search
     let query = this.supabaseService.client
       .from('listings')
-      .select('*, owner:profiles(full_name, avatar_url, rating, is_verified)')
+      .select('*, owner:profiles(full_name, avatar_url, rating, is_verified)', { count: 'exact' })
       .eq('is_available', true);
 
     if (options?.category) {
@@ -185,6 +105,16 @@ export class ListingsService {
     }
     if (options?.maxPrice !== undefined) {
       query = query.lte('price_per_day', options.maxPrice);
+    }
+
+    if (options?.search) {
+      // Escape SQL LIKE wildcards % and _
+      const escapedSearch = options.search
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      const pattern = `%${escapedSearch}%`;
+      query = query.or(`title.ilike.${pattern},description.ilike.${pattern}`);
     }
 
     // Sorting
@@ -207,7 +137,7 @@ export class ListingsService {
       throw new BadRequestException(error.message);
     }
 
-    return { data, page, limit, total: count };
+    return { data, page, limit, total: count || 0 };
   }
 
   async findOne(id: string) {

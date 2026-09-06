@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:skipit/core/config/app_config.dart';
+import 'package:skipit/core/services/dio_provider.dart';
 import 'package:skipit/core/services/supabase_provider.dart';
 import 'package:skipit/features/profile/domain/models/user_profile.dart';
 
@@ -10,10 +10,7 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 
 class ProfileRepository {
   final Ref _ref;
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.apiBaseUrl,
-    headers: {'bypass-tunnel-reminder': 'true'},
-  ));
+  Dio get _dio => _ref.read(dioProvider);
 
   ProfileRepository(this._ref);
 

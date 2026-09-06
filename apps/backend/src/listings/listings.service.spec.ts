@@ -28,35 +28,56 @@ describe('ListingsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('findAll() search split query execution', () => {
-    it('should run separate title and description queries and escape LIKE wildcards', async () => {
-      const ilikeMock = jest.fn().mockImplementation(() => Promise.resolve({ data: [], error: null }));
-      const eqMock = jest.fn().mockReturnThis();
-      const gteMock = jest.fn().mockReturnThis();
-      const lteMock = jest.fn().mockReturnThis();
-
-      const selectMock = jest.fn().mockReturnValue({
-        eq: eqMock,
-        gte: gteMock,
-        lte: lteMock,
-        ilike: ilikeMock,
-      });
+  describe('findAll() search query execution', () => {
+    it('should query title and description with an OR clause and escape LIKE wildcards', async () => {
+      const queryMock: any = {
+        eq: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lte: jest.fn().mockReturnThis(),
+        or: jest.fn().mockImplementation(() => queryMock),
+        order: jest.fn().mockReturnThis(),
+        range: jest.fn().mockReturnThis(),
+        then: jest.fn().mockImplementation((resolve) => {
+          resolve({ data: [], error: null, count: 0 });
+        }),
+      };
 
       supabaseClientMock.from.mockReturnValue({
-        select: selectMock,
+        select: jest.fn().mockReturnValue(queryMock),
       });
 
       const searchInput = '50% off_now';
       await service.findAll({ search: searchInput });
 
       expect(supabaseClientMock.from).toHaveBeenCalledWith('listings');
-      
-      // Should query both columns in parallel
-      expect(ilikeMock).toHaveBeenCalledTimes(2);
-      
-      // Wildcard percentage (%) and underscore (_) are escaped as \% and \_
-      expect(ilikeMock).toHaveBeenNthCalledWith(1, 'title', '%50\\% off\\_now%');
-      expect(ilikeMock).toHaveBeenNthCalledWith(2, 'description', '%50\\% off\\_now%');
+      expect(queryMock.or).toHaveBeenCalledWith('title.ilike.%50\\% off\\_now%,description.ilike.%50\\% off\\_now%');
+    });
+
+    it('should correctly handle listings matching search criteria', async () => {
+      const mockData = [
+        { id: '1', title: 'Skip Bin Small', description: 'Small skip bin', price_per_day: 50 },
+        { id: '2', title: 'Camera Pro', description: 'Professional camera', price_per_day: 120 }
+      ];
+
+      const queryMock: any = {
+        eq: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lte: jest.fn().mockReturnThis(),
+        or: jest.fn().mockImplementation(() => queryMock),
+        order: jest.fn().mockReturnThis(),
+        range: jest.fn().mockReturnThis(),
+        then: jest.fn().mockImplementation((resolve) => {
+          resolve({ data: mockData, error: null, count: 2 });
+        }),
+      };
+
+      supabaseClientMock.from.mockReturnValue({
+        select: jest.fn().mockReturnValue(queryMock),
+      });
+
+      const result = await service.findAll({ search: 'bin' });
+      expect(result.data).toHaveLength(2);
+      expect(result.total).toBe(2);
     });
   });
 });

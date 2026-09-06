@@ -21,8 +21,8 @@ import {
 } from 'lucide-react';
 
 // Configure Supabase client using credentials from root .env
-const SUPABASE_URL = 'https://qjolinnxfovlliameork.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_pz_KqPLn7xanlzbEVmQrSQ_i2FAOIO0';
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://uhrskxkgbpzzanehwefm.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_4KlmMgS5oNhcAZUWPOTGBA_Pgrndepm';
 const API_BASE_URL = 'http://localhost:3000';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
